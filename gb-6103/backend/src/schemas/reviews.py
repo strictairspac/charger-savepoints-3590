@@ -16,3 +16,5 @@ class ReviewEntry(ReviewInput):
     run_id: int
     actor: str
     created_at: int
+    snapshot: dict | None = None
+    digest: str | None = None

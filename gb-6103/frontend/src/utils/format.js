@@ -1,4 +1,4 @@
-const date = new Intl.DateTimeFormat("zh-CN", {dateStyle: "short", timeStyle: "short"});
+const date = new Intl.DateTimeFormat("zh-CN", {dateStyle: "short", timeStyle: "short", timeZone: "Asia/Shanghai"});
 
 export function time(seconds) {
   return seconds ? date.format(new Date(seconds * 1000)) : "—";

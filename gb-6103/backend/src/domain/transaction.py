@@ -1,7 +1,11 @@
-from sqlalchemy import text
+from time import time
+
+from sqlalchemy import insert, text
 from sqlalchemy.exc import IntegrityError
 
 from .acceptance_rules import StationHold, ensure_energizable
+from ..models.port_tests import port_tests
+from ..utils.timeparse import parse_time
 
 
 def _stage_tables(db):
@@ -44,9 +48,30 @@ def _integrity_note(exc):
     raise exc
 
 
-def receive(db, stations, minimum):
+def _port_ok(port, minimum):
+    return port["interlock"] is True and port["insulation"] >= minimum
+
+
+def _ledger_entries(run_id, station, minimum, decision, detail):
+    now = int(time())
+    entries = []
+    for port in station["ports"]:
+        entries.append({
+            "run_id": run_id, "position": None, "station": station["station"],
+            "district": station["district"], "port_serial": port["serial"],
+            "insulation": port["insulation"], "interlock": port["interlock"],
+            "minimum": minimum,
+            "meter": port["meter"], "tested_at": parse_time(port["tested_at"], "检测时间"),
+            "port_ok": _port_ok(port, minimum), "station_decision": decision,
+            "reason": detail[:400], "recorded_at": now,
+        })
+    return entries
+
+
+def receive(db, run_id, stations, minimum):
     _stage_tables(db)
     evidence = []
+    ledger = []
     for position, station in enumerate(stations, 1):
         try:
             with db.begin_nested():
@@ -61,6 +86,13 @@ def receive(db, stations, minimum):
             "顺序": position, "站号": station["station"], "片区": station["district"],
             "送检枪口": len(station["ports"]), "决定": outcome, "原因": detail,
         })
+        # The ledger is written outside the savepoint: readings from a held and
+        # rolled-back station must still be traceable by a late revocation.
+        for entry in _ledger_entries(run_id, station, minimum, outcome, detail):
+            entry["position"] = position
+            ledger.append(entry)
+    if ledger:
+        db.execute(insert(port_tests), ledger)
     accepted = db.execute(text("SELECT COUNT(*) FROM acceptance_station")).scalar_one()
     ports = db.execute(text("SELECT COUNT(*) FROM acceptance_port")).scalar_one()
     db.execute(text("DROP TABLE acceptance_port, acceptance_station"))

@@ -115,3 +115,9 @@ td a[aria-current=true] { font-weight: 750; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.clearance-head { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; }
+.clearance-state[data-clearance="停送"] { color: var(--signal); }
+.clearance-state[data-clearance="恢复送电"], .clearance-state[data-clearance="复测合格"] { color: var(--accent); }
+ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: .3rem; }
+ul.plain li { overflow-wrap: anywhere; }
+.evidence .panel > h3 { margin-top: 1rem; }

@@ -1,7 +1,10 @@
 import re
 
+from src.utils.timeparse import parse_time
 
 CODE = re.compile(r"[A-Z0-9][A-Z0-9-]{0,23}")
+
+PORT_FIELDS = {"serial", "insulation", "interlock", "meter", "tested_at"}
 
 
 def _code(value, name):
@@ -25,10 +28,12 @@ def validate(payload):
         if not isinstance(ports, list) or not 1 <= len(ports) <= 32:
             raise ValueError("同站须提交 1–32 个枪口")
         for port in ports:
-            if not isinstance(port, dict) or set(port) != {"serial", "insulation", "interlock"}:
-                raise ValueError("枪口记录须含 serial、insulation 和 interlock")
+            if not isinstance(port, dict) or set(port) != PORT_FIELDS:
+                raise ValueError("枪口记录须含 serial、insulation、interlock、meter 和 tested_at")
             _code(port["serial"], "枪口序列号")
             if type(port["insulation"]) is not int or not 0 <= port["insulation"] <= 100000:
                 raise ValueError("绝缘读数须为 0–100000 kΩ 整数")
             if type(port["interlock"]) is not bool:
                 raise ValueError("联锁检测必须是布尔值")
+            _code(port["meter"], "仪表号")
+            parse_time(port["tested_at"], "检测时间")
